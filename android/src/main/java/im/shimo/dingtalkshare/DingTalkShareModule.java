@@ -10,12 +10,16 @@ import android.util.Log;
 import com.android.dingtalk.share.ddsharemodule.DDShareApiFactory;
 import com.android.dingtalk.share.ddsharemodule.IDDAPIEventHandler;
 import com.android.dingtalk.share.ddsharemodule.IDDShareApi;
+import com.android.dingtalk.share.ddsharemodule.ShareConstant;
 import com.android.dingtalk.share.ddsharemodule.message.BaseReq;
 import com.android.dingtalk.share.ddsharemodule.message.BaseResp;
+import com.android.dingtalk.share.ddsharemodule.message.SendAuth;
 import com.android.dingtalk.share.ddsharemodule.message.DDImageMessage;
 import com.android.dingtalk.share.ddsharemodule.message.DDMediaMessage;
 import com.android.dingtalk.share.ddsharemodule.message.DDWebpageMessage;
 import com.android.dingtalk.share.ddsharemodule.message.SendMessageToDD;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -91,7 +95,6 @@ public class DingTalkShareModule extends ReactContextBaseJavaModule implements I
         SendMessageToDD.Req webReq = new SendMessageToDD.Req();
         webReq.mMediaMessage = webMessage;
 
-        //调用api接口发送消息到支付宝
         if (!getDdShareApi(getCurrentActivity()).sendReq(webReq)) {
             mPromise.reject(SHARE_FAILED_CODE, "分享失败");
         }
@@ -122,9 +125,25 @@ public class DingTalkShareModule extends ReactContextBaseJavaModule implements I
         SendMessageToDD.Req req = new SendMessageToDD.Req();
         req.mMediaMessage = mediaMessage;
 
-        //调用api接口发送消息到支付宝
         if (!getDdShareApi(getCurrentActivity()).sendReq(req)) {
             mPromise.reject(SHARE_FAILED_CODE, "分享失败");
+        }
+    }
+
+    //授权登录
+    @ReactMethod
+    public void getAuthCode(Promise promise) {
+        mPromise = promise;
+        if (!checkSupport()) {
+            return;
+        }
+   
+        SendAuth.Req req = new SendAuth.Req();
+        req.scope = SendAuth.Req.SNS_LOGIN;
+        req.state = "test";
+
+        if (!getDdShareApi(getCurrentActivity()).sendReq(req)) {
+            mPromise.reject(SHARE_FAILED_CODE, "授权失败");
         }
     }
 
@@ -135,15 +154,36 @@ public class DingTalkShareModule extends ReactContextBaseJavaModule implements I
 
     @Override
     public void onResp(BaseResp baseResp) {
-        Log.d(TAG, baseResp.mErrStr);
         int errCode = baseResp.mErrCode;
-        switch (errCode) {
-            case BaseResp.ErrCode.ERR_OK:
-                mPromise.resolve(true);
-                break;
-            default:
-                mPromise.reject(errCode + "", baseResp.mErrStr);
-                break;
+
+        if (baseResp.getType() == ShareConstant.COMMAND_SENDAUTH_V2 && (baseResp instanceof SendAuth.Resp)){
+            SendAuth.Resp authResp = (SendAuth.Resp) baseResp;
+
+            switch (errCode) {
+                case BaseResp.ErrCode.ERR_OK:
+                    WritableMap map = Arguments.createMap();
+                    map.putString("code", authResp.code);
+                    mPromise.resolve(map);
+                    break;
+                case BaseResp.ErrCode.ERR_USER_CANCEL:
+                    mPromise.reject(errCode + "", "授权取消");
+                    break;
+                default:
+                    mPromise.reject(errCode + "", "授权异常");
+                    break;
+            }
+        } else {
+            switch (errCode) {
+                case BaseResp.ErrCode.ERR_OK:
+                    mPromise.resolve("分享成功");
+                    break;
+                case BaseResp.ErrCode.ERR_USER_CANCEL:
+                    mPromise.resolve("分享取消");
+                    break;
+                default:
+                    mPromise.reject(errCode+"", "分享失败"+baseResp.mErrStr);
+                    break;
+            }
         }
     }
 

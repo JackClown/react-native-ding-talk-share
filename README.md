@@ -1,7 +1,7 @@
 
 # react-native-ding-talk-share
 
-钉钉分享 react native 版 SDK
+钉钉分享 react native 版 SDK，支持钉钉授权登录
 
 * [钉钉开放平台](https://open-doc.dingtalk.com/) 点击 `分享`
 
@@ -63,6 +63,25 @@ General > Linked Frameworks and Libraries > 添加 `node_modules/react-native-di
 
 Build Settings > Framework Search Paths > 添加 `$(SRCROOT)/../node_modules/react-native-ding-talk-share/ios` `no recursive`
 
+#### 修改AppDelegate.m
+
+在AppDeletegate.m增加如下代码
+
+```objectivec
+#import <React/RCTLinkingManager.h>
+
+//...other code
+
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation{
+
+  return [RCTLinkingManager application:application openURL:url sourceApplication:sourceApplication annotation:annotation];
+}
+
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options{
+  return [RCTLinkingManager application:application openURL:url options:options];
+}
+```
+
 ## Usage
 
 ```javascript
@@ -73,4 +92,7 @@ result = await DingTalk.shareWebPage(link, wechatURIProcess(thumb || icon), titl
 
 // share image
 result = await DingTalk.shareImage(image);
+
+// authority
+result = await DingTalk.getAuthCode();
 ```

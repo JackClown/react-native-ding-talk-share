@@ -21,6 +21,10 @@ RCT_EXPORT_MODULE()
     return dispatch_get_main_queue();
 }
 
++ (BOOL)requiresMainQueueSetup {
+    return YES;
+}
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -107,6 +111,23 @@ RCT_EXPORT_METHOD(shareWebPage
     }
 }
 
+RCT_EXPORT_METHOD(getAuthCode
+                  : (RCTPromiseResolveBlock)resolve
+                  : (RCTPromiseRejectBlock)reject) {
+    self.resolveBlock = resolve;
+    self.rejectBlock = reject;
+    if (![self checkSupport]) {
+        return;
+    }
+
+    DTAuthorizeReq *authReq = [DTAuthorizeReq new];
+    authReq.bundleId = [[NSBundle mainBundle] bundleIdentifier];
+
+    if (![DTOpenAPI sendReq:authReq]) {
+        reject(DING_TALK_SHARE_FAILED_CODE, @"获取授权码失败", nil);
+    }
+}
+
 #pragma mark - DTOpenAPIDelegate
 
 /**
@@ -124,7 +145,13 @@ RCT_EXPORT_METHOD(shareWebPage
  */
 - (void)onResp:(DTBaseResp *)resp {
     if (resp.errorCode == DTOpenAPISuccess) {
-        self.resolveBlock(@YES);
+        if ([resp isKindOfClass:[DTAuthorizeResp class]]) {
+            DTAuthorizeResp *authResp = (DTAuthorizeResp *)resp;
+            NSString *accessCode = authResp.accessCode;
+            self.resolveBlock([NSDictionary dictionaryWithObjectsAndKeys:accessCode,@"code", nil]);
+        } else {
+            self.resolveBlock(@YES);
+        }
     } else {
         self.rejectBlock([NSString stringWithFormat:@"%@", @(resp.errorCode)], resp.errorMessage, nil);
     }
