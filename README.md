@@ -1,7 +1,7 @@
 
 # react-native-ding-talk-share
 
-钉钉分享 react native 版 SDK，支持钉钉授权登录
+钉钉分享 react native 版 SDK，支持钉钉授权
 
 * [钉钉开放平台](https://open-doc.dingtalk.com/) 点击 `分享`
 
